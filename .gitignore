@@ -170,3 +170,5 @@ cython_debug/
 runs/
 report/node_modules/
 report/package-lock.json
+
+*.DS_Store
