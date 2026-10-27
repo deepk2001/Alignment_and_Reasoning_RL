@@ -50,6 +50,23 @@ def style_axes(ax, title: str, xlabel: str, ylabel: str) -> None:
     ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
 
 
+def label_line_ends(fig, ax, ends: list[tuple[float, float]], percent: bool, min_gap_pt: float = 9) -> None:
+    """Annotate each line's last value, nudging labels apart vertically so close values don't overlap."""
+    y0, y1 = ax.get_ylim()
+    pt_per_unit = ax.get_window_extent().height * 72 / fig.dpi / (y1 - y0)
+    order = sorted(range(len(ends)), key=lambda i: ends[i][1])
+    placed: list[float] = []  # label heights in points, bottom to top
+    for i in order:
+        y_pt = ends[i][1] * pt_per_unit
+        if placed and y_pt - placed[-1] < min_gap_pt:
+            y_pt = placed[-1] + min_gap_pt
+        placed.append(y_pt)
+        x, y = ends[i]
+        text = f"{y:.1f}%" if percent else f"{y:.2f}"
+        ax.annotate(text, (x, y), textcoords="offset points", xytext=(6, y_pt - y * pt_per_unit),
+                    va="center", fontsize=8, color=TEXT_2)
+
+
 def line_figure(
     lines: list[tuple[str, list[float], list[float]]],
     title: str,
@@ -65,18 +82,20 @@ def line_figure(
     fig, ax = plt.subplots(figsize=(7, 4), dpi=200)
     fig.patch.set_facecolor(SURFACE)
     style_axes(ax, title, xlabel, ylabel)
+    ends = []
     for i, (label, xs, ys) in enumerate(lines):
         color = SERIES[i]
         ys_plot = [100 * y for y in ys] if percent else ys
         ax.plot(xs, ys_plot, color=color, linewidth=2, marker="o", markersize=4, label=label)
-        if len(lines) <= 4:  # direct-label the line ends in text ink, not series color
-            ax.annotate(f"{ys_plot[-1]:.1f}{'%' if percent else ''}", (xs[-1], ys_plot[-1]),
-                        textcoords="offset points", xytext=(6, 0), va="center", fontsize=8, color=TEXT_2)
+        ends.append((xs[-1], ys_plot[-1]))
     if len(lines) > 1:
         ax.legend(frameon=False, fontsize=9, labelcolor=TEXT)
     if percent:
-        ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:.0f}%"))
+        # decimals=None picks enough precision for the tick spacing, so small ranges don't repeat "2%, 2%".
+        ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(xmax=100, decimals=None))
     fig.tight_layout()
+    if len(lines) <= 4:  # direct-label the line ends in text ink, not series color
+        label_line_ends(fig, ax, ends, percent)
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_DIR / out, facecolor=SURFACE)
     plt.close(fig)

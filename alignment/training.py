@@ -43,7 +43,7 @@ def save_checkpoint(
     optimizer: torch.optim.Optimizer,
     state: dict,
 ) -> None:
-    """Save policy, optimizer and loop state so a run can resume after a disconnect (e.g. on Colab).
+    """Save policy, optimizer and loop state so a run can resume after a crash or disconnect.
 
     Writes to a temp dir and renames it into place, so an interrupted save never clobbers the last good one.
     """

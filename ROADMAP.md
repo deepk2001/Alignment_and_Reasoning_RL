@@ -19,7 +19,7 @@ Required tests: **only `tests/test_sft.py` and `tests/test_grpo.py`**. (`test_da
 
 ## 1. Gotchas found while reading the repo (fix/keep in mind early)
 
-- [x] **No GPU on this Mac → experiments run on a single Colab A100** via [notebooks/colab_runner.ipynb](notebooks/colab_runner.ipynb). Policy and vLLM share the GPU (vLLM `gpu_memory_utilization=0.3`, started before the policy). flash-attn is skipped (SDPA fallback). GRPO and expert iteration checkpoint to Drive and resume after disconnects.
+- [x] **No GPU on this Mac → experiments run on the remote SSH GPU box** via one command: `uv run python scripts/run_all.py` (inside tmux). With one GPU, policy and vLLM share it (vLLM `gpu_memory_utilization=0.3`, started before the policy); with 2+ GPUs vLLM gets `cuda:1`. GRPO and expert iteration checkpoint to `runs/` and resume; finished steps are skipped on re-run.
 - [ ] **`pyproject.toml` packages `cs336_alignment`, but the code lives in `alignment/`.** Change `include = ["alignment"]` (or imports from `alignment.*` may fail once installed as a package).
 - [ ] **MATH data has no `answer` field** — only `problem`, `solution`, `level`, `type`. Ground truth = `extract_answer(solution)` (the `\boxed{}` extractor in `drgrpo_grader.py`).
 - [ ] **Validation set is 1,500 examples** (`data/MATH/validation.jsonl`), not the "5K test" the PDF intro mentions. Train is 6,000. Report on validation.

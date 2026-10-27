@@ -6,6 +6,8 @@ import torch
 import torch.nn.functional as F
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
+ENTROPY_CHUNK_POSITIONS = 512
+
 
 def tokenize_prompt_and_output(
     prompt_strs: list[str],
@@ -56,8 +58,11 @@ def get_response_log_probs(
     log_probs = F.log_softmax(logits.float(), dim=-1)
     out = {"log_probs": log_probs.gather(-1, labels.unsqueeze(-1)).squeeze(-1)}
     if return_token_entropy:
-        # Entropy is a logging metric only, so keep it out of the autograd graph.
-        out["token_entropy"] = compute_entropy(logits.detach().float())
+        # Entropy is a logging metric only, so keep it out of the autograd graph, and compute it a chunk of
+        # positions at a time: each float32 (seq_len, vocab) temporary is ~2.3 GiB at 4096 tokens.
+        with torch.no_grad():
+            chunks = logits.detach().split(ENTROPY_CHUNK_POSITIONS, dim=1)
+            out["token_entropy"] = torch.cat([compute_entropy(c.float()) for c in chunks], dim=1)
     return out
 
 
